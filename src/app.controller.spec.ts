@@ -2,6 +2,17 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
+jest.mock('@thallesp/nestjs-better-auth', () => ({
+  AllowAnonymous: () => () => {},
+  Session:
+    () =>
+    (
+      target: object,
+      propertyKey: string | symbol,
+      parameterIndex: number,
+    ) => {},
+}));
+
 describe('AppController', () => {
   let appController: AppController;
 
