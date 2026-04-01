@@ -7,9 +7,9 @@ jest.mock('@thallesp/nestjs-better-auth', () => ({
   Session:
     () =>
     (
-      target: object,
-      propertyKey: string | symbol,
-      parameterIndex: number,
+      _target: object,
+      _propertyKey: string | symbol,
+      _parameterIndex: number,
     ) => {},
 }));
 
