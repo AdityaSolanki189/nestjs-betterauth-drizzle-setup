@@ -1,171 +1,122 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# NestJS + Better Auth + Drizzle
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A Node.js API template using NestJS 12, Express, Better Auth, Drizzle and PostgreSQL. Bun manages packages and scripts; Vite+ owns formatting, type-aware linting and Vitest testing. The application compiles to native ESM and runs on Node, including in production.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Requirements
 
-## Description
+- Node **24.22.0** (`.node-version`)
+- Bun **1.4.3** (`.bun-version` and `packageManager`)
+- PostgreSQL 16, or Docker Compose
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
-
-```bash
-$ pnpm install
+```sh
+bun install --frozen-lockfile
+cp .env.example .env
 ```
 
-## Compile and run the project
+Replace the auth placeholder before starting. Generate an auth secret with `openssl rand -hex 32`. Configuration validation reports invalid field names without printing their values.
 
-```bash
-# development
-$ pnpm run start
+## Local development
 
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+```sh
+docker compose up -d postgres
+bun run db:migrate
+bun run start:dev
 ```
 
-## Run with Docker Compose (NestJS + Postgres)
+The default API is `http://localhost:43127`. `DATABASE_URL` in `.env` uses localhost for host commands. Compose overrides the app's database connection to use its internal PostgreSQL service. URL-encode special characters in database credentials.
 
-Connection settings are read from `.env` (already created in project root).
+To run the application in Docker too:
 
-```bash
-# build and start app + postgres
-$ docker compose up --build
+```sh
+docker compose up --build
 ```
 
-Services:
-- NestJS app: `http://localhost:43127`
-- Postgres: `localhost:5432` (`postgres/postgres`, db: `core`)
+Set `APP_ENV_FILE` to use a different app environment file (default: `.env`). Compose uses the development image, source watching, and a separate dependency volume. After changing dependencies, refresh that volume with `docker compose run --rm app bun install --frozen-lockfile`, then recreate the app. Do not remove `postgres_data` to refresh application dependencies.
 
-```bash
-# stop containers
-$ docker compose down
+## Commands
 
-# stop and remove postgres data volume
-$ docker compose down -v
-```
+| Command                               | Purpose                                                   |
+| ------------------------------------- | --------------------------------------------------------- |
+| `bun run format`                      | Format supported source, configuration and documentation  |
+| `bun run format:check`                | Check formatting                                          |
+| `bun run lint` / `bun run lint:check` | Fix lint / check lint without edits                       |
+| `bun run check`                       | Check formatting, types and type-aware lint rules         |
+| `bun run test`                        | Run unit tests once                                       |
+| `bun run test:watch`                  | Watch unit tests                                          |
+| `bun run test:cov`                    | Unit coverage in `coverage/`                              |
+| `bun run test:e2e`                    | Real PostgreSQL authentication and compiled startup tests |
+| `bun run build`                       | Compile with Nest CLI and its Swagger plugin              |
+| `bun run start:prod`                  | Run the compiled application on Node                      |
+| `bun run verify`                      | Static checks, unit tests, build and integration tests    |
 
-## Multitenancy API (Drizzle ORM)
+Use `bun run test`, not Bun's built-in test runner. Tests import APIs from `vite-plus/test`; SWC preserves the decorator metadata Nest dependency injection requires. Vite+ static checking includes test and tooling TypeScript too. Git hooks run Vite+ staged checks and conventional-commit validation.
 
-The app now uses Drizzle with a Postgres-backed multitenant model:
-- `users`
-- `companies`
-- `user_companies` (many-to-many membership with role)
+## Authentication and API
 
-Every user has an `activeCompanyId`. The service enforces that active company is always resolvable from the user memberships.
+- `GET /`: public greeting.
+- `GET /me`: greeting for the authenticated session; returns 401 without a valid session.
+- `/api/auth/*`: Better Auth handlers and session cookies.
+- `GET /api/auth/get-session`: current session.
+- `/docs`: Swagger UI in development/test. Production requires `SWAGGER_ENABLED=true`.
 
-```bash
-# create user + first company (also sets active company)
-curl -X POST http://localhost:43127/tenancy/users \
-  -H "Content-Type: application/json" \
-  -d '{"email":"owner@acme.com","name":"Owner","companyName":"Acme"}'
+Email/password, admin (`admin` and `superAdmin`), organizations, two-factor authentication, JWT and OpenAPI plugins are enabled. Browser applications must be listed in `BETTER_AUTH_TRUSTED_ORIGINS`; use an explicit comma-separated HTTP(S) allowlist. Cookie-authenticated mutations need a trusted `Origin` header. The global guard protects application routes unless marked anonymous.
 
-# add user to another company
-curl -X POST http://localhost:43127/tenancy/users/1/companies/2 \
-  -H "Content-Type: application/json" \
-  -d '{"role":"admin"}'
-
-# switch active company
-curl -X POST http://localhost:43127/tenancy/users/1/active-company/2
-
-# read current tenant context
-curl http://localhost:43127/tenancy/users/1/context
-```
-
-## Authentication (Better Auth)
-
-The app uses [better-auth](https://www.better-auth.com/) with Drizzle + Postgres.
-Auth routes are mounted under `/api/auth/*`.
-
-```bash
-# sign up (sets auth session cookie)
+```sh
 curl -X POST http://localhost:43127/api/auth/sign-up/email \
-  -H "Content-Type: application/json" \
+  -H 'Content-Type: application/json' -H 'Origin: http://localhost:43127' \
   -c cookies.txt \
-  -d '{"name":"Owner","email":"owner@acme.com","password":"strong-password-123"}'
-
-# sign in (reuses cookie jar)
-curl -X POST http://localhost:43127/api/auth/sign-in/email \
-  -H "Content-Type: application/json" \
-  -c cookies.txt \
-  -d '{"email":"owner@acme.com","password":"strong-password-123"}'
-
-# fetch auth session
-curl http://localhost:43127/auth/session -b cookies.txt
-
-# fetch/create tenant context for authenticated user
-curl http://localhost:43127/tenancy/me/context -b cookies.txt
+  -d '{"name":"Ada","email":"ada@example.com","password":"strong-password-123"}'
+curl http://localhost:43127/me -b cookies.txt
+curl -X POST http://localhost:43127/api/auth/sign-out \
+  -H 'Content-Type: application/json' -H 'Origin: http://localhost:43127' \
+  -b cookies.txt -d '{}'
 ```
 
-## Run tests
+Do not add a body parser before Better Auth: the application disables Nest's default parser and lets the adapter handle auth raw bodies and normal JSON routes in order. Unexpected application failures return generic 500 responses. Authentication logs omit upstream error payloads, which can contain database or request secrets. Startup failures exit unsuccessfully; SIGTERM closes the HTTP server and PostgreSQL pool.
 
-```bash
-# unit tests
-$ pnpm run test
+## Database and schema upgrades
 
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+```sh
+bun run auth:schema       # after changing auth plugins/options
+bun run db:generate       # review generated SQL before applying
+bun run db:migrate
+bun run drizzle:studio
 ```
 
-## Deployment
+Schema generation uses `auth.config.ts` and the same auth factory as the app. Supply the required environment configuration for CLI commands. Migration commands use `DATABASE_URL`; migrations are an explicit deployment step and do not run automatically when application replicas start.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+The original migration is preserved. The modernization migration adds the admin/impersonation fields, JWT key metadata and two-factor lockout fields. It also removes the redundant organization slug index; the unique constraint still enforces uniqueness. Existing database contents are retained. Back up an existing database and apply the new migration before deploying this version.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Integration tests
 
-```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+Provide `TEST_DATABASE_URL` separately from the application URL, pointing at a disposable PostgreSQL server. The account needs `CREATE DATABASE` permission: tests create a randomly named database, apply the real migration history, and drop only that database during cleanup. Tests do not truncate application tables.
+
+For the Compose PostgreSQL service:
+
+```sh
+TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres bun run verify
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Tests cover actual signup/signin/signout, session cookies, unauthorized access, browser origins, migrations, Swagger settings, startup errors and shutdown. Authentication and database integration tests use real application providers. No application secrets are needed for tests. `test:e2e` expects a current `dist/` build; `verify` builds first.
 
-## Resources
+## Production and CI
 
-Check out a few resources that may come in handy when working with NestJS:
+```sh
+bun run build
+NODE_ENV=production bun run start:prod
+docker build --target production -t core-api .
+docker run --rm --env-file .env --env NODE_ENV=production -p 43127:43127 core-api
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Production commands explicitly override the development `NODE_ENV` from `.env`; Docker's `--env-file` can override image defaults. A container's `DATABASE_URL` must address a reachable server, not its own localhost. The production image contains runtime dependencies and compiled output, runs as the `node` user, and launches Node directly. It includes neither Bun nor development tools nor `.env` files. Supply secrets at runtime; apply migrations separately.
 
-## Support
+CI verifies pull requests with pinned Node/Bun, frozen installs, static checks, unit/coverage tests, real PostgreSQL integration tests, and a production container smoke test. Main-branch CD calls that same verification workflow before publishing a GHCR image tagged `latest` and by commit SHA.
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## Troubleshooting
 
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- **Invalid environment:** replace example credentials and check the named fields in `.env`.
+- **Database connection failed:** check `DATABASE_URL`, service readiness, host/container hostname and TLS parameters.
+- **Integration setup fails:** set `TEST_DATABASE_URL`, ensure the server is disposable, and grant database-creation permission.
+- **Port already in use:** change `APP_PORT` and the matching `BETTER_AUTH_URL`.
+- **Native tooling/install failures:** use the pinned Node/Bun versions and `bun install --frozen-lockfile`. Only Nest, SWC and esbuild dependency lifecycle scripts are trusted; telemetry scripts remain blocked.
+- **ESM imports:** local TypeScript imports use `.js` extensions for the emitted Node modules.

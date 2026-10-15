@@ -8,7 +8,7 @@ import {
 } from '@nestjs/swagger';
 import { AllowAnonymous, Session } from '@thallesp/nestjs-better-auth';
 import type { UserSession } from '@thallesp/nestjs-better-auth';
-import { AppService } from './app.service';
+import { AppService } from './app.service.js';
 
 @ApiTags('app')
 @Controller()

@@ -1,28 +1,23 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-
-jest.mock('@thallesp/nestjs-better-auth', () => ({
-  AllowAnonymous: () => () => {},
-  Session:
-    () =>
-    (
-      _target: object,
-      _propertyKey: string | symbol,
-      _parameterIndex: number,
-    ) => {},
-}));
+import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
+import { AppController } from './app.controller.js';
+import { AppService } from './app.service.js';
 
 describe('AppController', () => {
   let appController: AppController;
+  let app: TestingModule;
 
   beforeEach(async () => {
-    const app: TestingModule = await Test.createTestingModule({
+    app = await Test.createTestingModule({
       controllers: [AppController],
       providers: [AppService],
     }).compile();
 
     appController = app.get<AppController>(AppController);
+  });
+
+  afterEach(async () => {
+    await app?.close();
   });
 
   describe('root', () => {

@@ -1,13 +1,5 @@
 import { relations } from 'drizzle-orm';
-import {
-  boolean,
-  index,
-  integer,
-  pgTable,
-  text,
-  timestamp,
-  uniqueIndex,
-} from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, integer, index } from 'drizzle-orm/pg-core';
 
 export const user = pgTable('user', {
   id: text('id').primaryKey(),
@@ -20,8 +12,11 @@ export const user = pgTable('user', {
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
+  role: text('role'),
+  banned: boolean('banned').default(false),
+  banReason: text('ban_reason'),
+  banExpires: timestamp('ban_expires'),
   twoFactorEnabled: boolean('two_factor_enabled').default(false),
-  stripeCustomerId: text('stripe_customer_id'),
 });
 
 export const session = pgTable(
@@ -39,6 +34,7 @@ export const session = pgTable(
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
+    impersonatedBy: text('impersonated_by'),
     activeOrganizationId: text('active_organization_id'),
   },
   (table) => [index('session_userId_idx').on(table.userId)],
@@ -84,18 +80,14 @@ export const verification = pgTable(
   (table) => [index('verification_identifier_idx').on(table.identifier)],
 );
 
-export const organization = pgTable(
-  'organization',
-  {
-    id: text('id').primaryKey(),
-    name: text('name').notNull(),
-    slug: text('slug').notNull().unique(),
-    logo: text('logo'),
-    createdAt: timestamp('created_at').notNull(),
-    metadata: text('metadata'),
-  },
-  (table) => [uniqueIndex('organization_slug_uidx').on(table.slug)],
-);
+export const organization = pgTable('organization', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+  logo: text('logo'),
+  createdAt: timestamp('created_at').notNull(),
+  metadata: text('metadata'),
+});
 
 export const member = pgTable(
   'member',
@@ -147,6 +139,9 @@ export const twoFactor = pgTable(
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
+    verified: boolean('verified').default(true),
+    failedVerificationCount: integer('failed_verification_count').default(0),
+    lockedUntil: timestamp('locked_until'),
   },
   (table) => [
     index('twoFactor_secret_idx').on(table.secret),
@@ -160,24 +155,8 @@ export const jwks = pgTable('jwks', {
   privateKey: text('private_key').notNull(),
   createdAt: timestamp('created_at').notNull(),
   expiresAt: timestamp('expires_at'),
-});
-
-export const subscription = pgTable('subscription', {
-  id: text('id').primaryKey(),
-  plan: text('plan').notNull(),
-  referenceId: text('reference_id').notNull(),
-  stripeCustomerId: text('stripe_customer_id'),
-  stripeSubscriptionId: text('stripe_subscription_id'),
-  status: text('status').default('incomplete'),
-  periodStart: timestamp('period_start'),
-  periodEnd: timestamp('period_end'),
-  trialStart: timestamp('trial_start'),
-  trialEnd: timestamp('trial_end'),
-  cancelAtPeriodEnd: boolean('cancel_at_period_end').default(false),
-  cancelAt: timestamp('cancel_at'),
-  canceledAt: timestamp('canceled_at'),
-  endedAt: timestamp('ended_at'),
-  seats: integer('seats'),
+  alg: text('alg'),
+  crv: text('crv'),
 });
 
 export const userRelations = relations(user, ({ many }) => ({

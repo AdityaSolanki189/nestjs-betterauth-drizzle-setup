@@ -1,9 +1,0 @@
-packages:
-  - '.'
-
-ignoredBuiltDependencies:
-  - esbuild
-  - unrs-resolver
-
-onlyBuiltDependencies:
-  - '@nestjs/core'
