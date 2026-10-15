@@ -1,19 +1,15 @@
 import 'dotenv/config';
 import { defineConfig } from 'drizzle-kit';
+import { z } from 'zod';
+
+const databaseUrl = z.url({ protocol: /^postgres(ql)?$/ }).safeParse(process.env.DATABASE_URL);
+if (!databaseUrl.success) throw new Error('Invalid environment: DATABASE_URL');
 
 export default defineConfig({
   out: './src/database/migrations',
   schema: './src/database/schema',
   dialect: 'postgresql',
   dbCredentials: {
-    host:
-      process.env.POSTGRES_HOST === 'postgres'
-        ? 'localhost'
-        : process.env.POSTGRES_HOST!,
-    port: Number(process.env.POSTGRES_PORT),
-    user: process.env.POSTGRES_USER,
-    password: process.env.POSTGRES_PASSWORD,
-    database: process.env.POSTGRES_DB!,
-    ssl: process.env.POSTGRES_SSL === 'true',
+    url: databaseUrl.data,
   },
 });

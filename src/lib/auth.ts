@@ -1,46 +1,42 @@
-import { stripe } from '@better-auth/stripe';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import {
-  admin,
-  jwt,
-  openAPI,
-  organization,
-  twoFactor,
-} from 'better-auth/plugins';
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
-import Stripe from 'stripe';
-import * as schema from '../database/schema';
+import { admin, jwt, openAPI, organization, twoFactor } from 'better-auth/plugins';
+import { adminAc, userAc } from 'better-auth/plugins/admin/access';
+import { Logger } from '@nestjs/common';
+import type { Environment } from '../config/env.js';
+import type { Database } from '../drizzle/drizzle.module.js';
+import * as schema from '../database/schema/index.js';
 
-export const db = drizzle({ client: postgres(process.env.DATABASE_URL!) });
-
-const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
-export const auth = betterAuth({
-  database: drizzleAdapter(db, {
-    provider: 'pg',
-    schema,
-  }),
-  emailAndPassword: {
-    enabled: true,
-  },
-  plugins: [
-    admin({
-      adminRoles: ['admin', 'superAdmin'],
-    }),
-    organization(),
-    twoFactor(),
-    jwt(),
-    openAPI(),
-    stripe({
-      stripeClient,
-      stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
-      createCustomerOnSignUp: true,
-      subscription: {
-        enabled: true,
-        plans: [],
+export function createAuth(config: Environment, db: Database) {
+  const logger = new Logger('Authentication');
+  return betterAuth({
+    advanced: { disableOriginCheck: false, disableCSRFCheck: false },
+    logger: {
+      level: 'warn',
+      log(level) {
+        if (level === 'error') logger.error('Authentication operation failed');
+        else if (level === 'warn') logger.warn('Authentication configuration or request warning');
       },
+    },
+    secret: config.BETTER_AUTH_SECRET,
+    baseURL: config.BETTER_AUTH_URL,
+    trustedOrigins: config.BETTER_AUTH_TRUSTED_ORIGINS,
+    database: drizzleAdapter(db, {
+      provider: 'pg',
+      schema,
     }),
-  ],
-});
+    emailAndPassword: {
+      enabled: true,
+    },
+    plugins: [
+      admin({
+        adminRoles: ['admin', 'superAdmin'],
+        roles: { admin: adminAc, user: userAc, superAdmin: adminAc },
+      }),
+      organization(),
+      twoFactor(),
+      jwt(),
+      openAPI(),
+    ],
+  });
+}

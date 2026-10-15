@@ -2,42 +2,39 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: core-app
-    command: pnpm run start:dev
-    env_file:
-      - .env
+      target: development
+    init: true
+    command: bun run start:dev
+    env_file: ${APP_ENV_FILE:-.env}
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-core}
     ports:
-      - "${APP_PORT:-43127}:${APP_PORT:-43127}"
+      - '${APP_PORT:-43127}:${APP_PORT:-43127}'
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
       - .:/app
-    restart: unless-stopped
+      - app_dependencies:/app/node_modules
+    stop_grace_period: 15s
 
   postgres:
     image: postgres:16-alpine
-    container_name: core-postgres
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-core}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - '${POSTGRES_PORT:-5432}:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-core}",
-        ]
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
     restart: unless-stopped
-
 
 volumes:
   postgres_data:
+  app_dependencies:
